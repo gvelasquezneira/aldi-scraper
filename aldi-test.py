@@ -79,32 +79,30 @@ def append_to_csv(data, filename='aldi_products.csv'):
     print(f"Data appended to {filename}")
 
 def get_subcategory_urls(page, department_url):
-    """Extract sub-category URLs from a department page."""
+    """Extract unique sub-category URLs from a department page."""
     print(f"Navigating to department: {department_url}")
     page.goto(department_url, wait_until="domcontentloaded")
     page.wait_for_timeout(3000)  # Wait for sub-categories to load
 
-    # Look for sub-category links (adjust locator based on page structure)
-    subcat_links = page.locator('a[href*="/store/aldi/collections"]')  # Broad locator for collection links
-    sub_urls = []
+    subcat_links = page.locator('a[href*="/store/aldi/collections"]')
+    sub_urls = set()  # Use a set to avoid duplicates within this page
 
     for i in range(subcat_links.count()):
         link = subcat_links.nth(i)
         href = link.get_attribute("href")
         full_url = f"https://shop.aldi.us{href}" if href.startswith("/") else href
-        # Filter to ensure it's a sub-category (e.g., contains 'n-' or 'rc-')
         if "/collections/n-" in full_url or "/collections/rc-" in full_url:
-            sub_urls.append(full_url)
+            sub_urls.add(full_url)  # Add to set (duplicates are ignored)
             print(f"Found sub-category URL: {full_url}")
 
     if not sub_urls:
         print(f"No sub-categories found for {department_url}. Treating as a single category.")
-        sub_urls.append(department_url)  # Use the department URL if no sub-categories
+        sub_urls.add(department_url)  # Add the department URL if no sub-categories
 
-    return sub_urls
+    return list(sub_urls)  # Convert back to list for consistency
 
 def get_department_urls(page):
-    """Extract top-level department URLs from the Aldi storefront page."""
+    """Extract top-level department URLs and their unique sub-categories from the Aldi storefront page."""
     base_url = "https://shop.aldi.us/store/aldi/storefront"
     print(f"Navigating to {base_url}...")
     page.goto(base_url, wait_until="domcontentloaded")
@@ -127,31 +125,31 @@ def get_department_urls(page):
 
     print("Found ul.e-19g896u")
     department_links = page.locator('ul.e-19g896u > li > a.e-v0wv1')
-    urls = []
+    dept_urls = set()  # Use a set for unique department URLs
 
     print(f"Total department links found: {department_links.count()}")
     for i in range(department_links.count()):
         link = department_links.nth(i)
         href = link.get_attribute("href")
         full_url = f"https://shop.aldi.us{href}" if href.startswith("/") else href
-        urls.append(full_url)
+        dept_urls.add(full_url)  # Add to set
         print(f"Found department URL: {full_url}")
 
-    # Now get sub-categories for each department
-    all_sub_urls = []
-    for dept_url in urls:
+    # Get sub-categories for each department
+    all_sub_urls = set()  # Use a set for unique sub-categories across all departments
+    for dept_url in dept_urls:
         sub_urls = get_subcategory_urls(page, dept_url)
-        all_sub_urls.extend(sub_urls)
+        all_sub_urls.update(sub_urls)  # Update set with sub-category URLs
 
-    print(f"Total sub-category URLs found: {len(all_sub_urls)}")
-    return all_sub_urls
+    print(f"Total unique sub-category URLs found: {len(all_sub_urls)}")
+    return list(all_sub_urls)  # Convert back to list
 
 def run(playwright: Playwright):
     """Main function to run the scraping process for dynamically fetched URLs."""
     browser = playwright.chromium.launch(headless=True)
     page = browser.new_page()
     
-    # Get all sub-category URLs
+    # Get all unique sub-category URLs
     urls = get_department_urls(page)
     if not urls:
         print("No URLs to scrape. Exiting.")
