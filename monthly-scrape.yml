@@ -3,7 +3,7 @@ name: Monthly Aldi Scrape
 on:
   schedule:
     - cron: '0 3 16 * *'  # 3:00 AM UTC on the 16th = 11 PM ET (EDT) or 10 PM ET (EST)
-  workflow_dispatch:  # Allows manual triggering for testing
+  workflow_dispatch: 
 
 jobs:
   scrape:
@@ -24,7 +24,7 @@ jobs:
           playwright install
 
       - name: Run the scrape script
-        run: python scrape_aldi.py
+        run: python aldi-test.py  # Updated to your file name
 
       - name: Commit and push changes
         run: |
